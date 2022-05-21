@@ -55,12 +55,13 @@ module TopModule(
     
     
     // UDP loopback
-    assign UDP0_TxData = UDP0_RxData + 8'h20; // upper to lower
-    assign UDP0_TxValid = UDP0_RxValid;
+    assign UDP0_TxData = last_header; // UDP0_RxData + 8'h20; // upper to lower
+    // assign UDP0_TxValid = UDP0_RxValid;
     assign UDP0_RxReady = UDP0_TxReady;
-    assign UDP0_TxLast = UDP0_RxLast;
+    // assign UDP0_TxLast = UDP0_RxLast;
     
     // Debug LEDs
+    
     assign led0_g = UDP0_Connected;
     assign led1_r = UDP0_TxValid;
     assign led1_g = UDP0_RxValid;
@@ -68,8 +69,26 @@ module TopModule(
     assign led2_g = IP_Ok;
     assign led = package_count;
     
-    always @(posedge UDP0_RxLast) begin
-        package_count <= package_count + 1;
+    // this is debugging stuff, work in progess. not tested
+    always @(posedge eth_rx_clk) begin
+        if(UDP0_RxValid && UDP0_TxReady) begin // AXI4 beat
+        
+            if(is_header) begin
+                is_header <= 0;
+                last_header <= UDP0_RxData;
+                UDP0_TxValid <= 1;
+                UDP0_TxLast <= 1;
+            end
+            else begin
+                UDP0_TxValid <= 0;
+                UDP0_TxLast <= 0;
+            end
+            
+            if(UDP0_RxLast) begin
+                package_count <= package_count + 1;
+                is_header <= 1;
+            end
+        end
     end
     
 
